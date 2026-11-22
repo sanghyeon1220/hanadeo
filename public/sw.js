@@ -1,6 +1,6 @@
 // 하나더 서비스 워커 — 앱 화면을 기기에 저장해 두고, 인터넷이 끊겨도 앱이 열리게 합니다.
 // 상품·거래 데이터(Supabase)는 항상 네트워크로만 가져오고 저장하지 않습니다.
-const VERSION = 'hanadeo-v3'
+const VERSION = 'hanadeo-v4'
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']
 
 self.addEventListener('install', event => {
