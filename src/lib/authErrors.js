@@ -13,8 +13,10 @@ export function authErrorMessage(err) {
     return { text: '비밀번호가 너무 짧거나 쉬워요.', detail: '6자 이상으로 입력해 주세요.', fields: ['password'] }
   if (code === 'validation_failed' || msg.includes('invalid format') || msg.includes('unable to validate email'))
     return { text: '이메일 형식이 올바르지 않아요.', detail: '예: name@example.com', fields: ['email'] }
+  if (code === 'email_address_not_authorized' || msg.includes('not authorized'))
+    return { text: '이 이메일로는 인증 메일을 보낼 수 없어요.', detail: '지금 서버 설정에서는 등록된 팀원 이메일로만 인증 메일을 보낼 수 있어요. 관리자에게 알려 주세요.', fields: ['email'] }
   if (code.startsWith('over_') || msg.includes('rate limit'))
-    return { text: '짧은 시간에 너무 많이 시도했어요.', detail: '잠시 후 다시 시도해 주세요. (인증 메일은 1시간에 보낼 수 있는 수가 정해져 있어요)', fields: [] }
+    return { text: '짧은 시간에 너무 많이 시도했어요.', detail: '잠시 후 다시 시도해 주세요. 인증 메일은 한 시간에 보낼 수 있는 수가 정해져 있어요.', fields: [] }
   if (msg.includes('failed to fetch') || msg.includes('network'))
     return { text: '서버에 연결하지 못했어요.', detail: '인터넷 연결을 확인하고 다시 시도해 주세요.', fields: [] }
   return { text: '로그인 처리 중 문제가 생겼어요.', detail: err?.message || '', fields: [] }

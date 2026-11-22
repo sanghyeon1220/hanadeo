@@ -19,3 +19,4 @@ test('모르는 오류는 원문을 보조 설명으로',()=>{
   const m=authErrorMessage({message:'Something odd'})
   assert.equal(m.detail,'Something odd')
 })
+test('팀원 외 주소로 메일 발송 불가',()=>assert.equal(authErrorMessage({code:'email_address_not_authorized',message:'Email address not authorized'}).text,'이 이메일로는 인증 메일을 보낼 수 없어요.'))
