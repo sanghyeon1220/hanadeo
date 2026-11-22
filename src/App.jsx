@@ -270,13 +270,13 @@ export default function App() {
   const activeProducts = useMemo(() => products.filter(p=>p.status==='active'&&new Date(p.expires_at)>new Date()),[products])
   const recommended = useMemo(()=>activeRequest ? rankProducts(activeProducts, activeRequest, user?.id, Date.now(), buyerConfig(activeRequest)) : [],[activeProducts,activeRequest,user?.id])
   const rankedMap = useMemo(()=>new Map(recommended.map(p=>[p.id,p])),[recommended])
-  const shownProducts = useMemo(() => {
-    const candidates = activeRequest ? recommended : activeProducts
-    return candidates.filter(p => {
-      const item=findItem(p.product_key)
-      return (category==='all'||item.category===category) && `${p.title} ${p.description||''}`.toLowerCase().includes(search.toLowerCase())
-    })
-  }, [activeRequest,recommended,activeProducts,category,search])
+  const passesSearch = useCallback(p => {
+    const item=findItem(p.product_key)
+    return (category==='all'||item.category===category) && `${p.title} ${p.description||''}`.toLowerCase().includes(search.toLowerCase())
+  }, [category, search])
+  const shownProducts = useMemo(() => (activeRequest ? recommended : activeProducts).filter(passesSearch), [activeRequest,recommended,activeProducts,passesSearch])
+  // 구매 요청이 있을 때 추천 아래에 보여줄 '지금 나눔 중인 상품' (위 추천에 나온 상품은 빼고)
+  const otherProducts = useMemo(() => activeRequest ? activeProducts.filter(p => !rankedMap.has(p.id)).filter(passesSearch) : [], [activeRequest,activeProducts,rankedMap,passesSearch])
   const categories = [...new Set(CATALOG.map(x => x.category))]
   const handleSale = async (form, error) => {
     if (error) return notify(error,true)
@@ -425,6 +425,7 @@ export default function App() {
         {activeRequest && showPriority && <div className="priority-panel"><div><b>내 우선순위</b><p>순서를 바꾸면 아래 추천 순서와 '내 기준' 점수가 바로 바뀌어요.</p></div><PriorityPicker compact value={pickedRequest.priority} onChange={pr=>updatePriority(pickedRequest,pr)}/></div>}
         <div className="catalog-tools"><div className="search-box"><Search size={18}/><input placeholder="어떤 상품을 찾으세요?" value={search} onChange={e=>setSearch(e.target.value)}/>{search && <button aria-label="검색 초기화" onClick={()=>setSearch('')}><X size={14}/></button>}</div><div className="category-chips">{['all',...categories].map(c=><button key={c} onClick={()=>setCategory(c)} className={category===c?'chosen':''}>{c==='all'?'전체':c}</button>)}</div></div>
         {loading ? <div className="loading-panel">상품을 불러오는 중...</div> : shownProducts.length ? <div className="product-grid">{shownProducts.map(p=><ProductCard key={p.id} product={p} request={activeRequest} userId={user.id} onReserve={handleReserve} onRequest={()=>setPage('request')} inProgress={busyId===p.id}/>)}</div> : <Empty icon={Search} title="조건에 맞는 상품이 없어요" subtitle="다른 상품으로 요청하거나 검색 조건을 변경해 보세요." action="새 구매 요청 만들기" onAction={()=>setPage('request')}/>}
+        {!loading && activeRequest && <div className="other-products"><div className="section-heading"><div><Pill icon={ShoppingBag}>NOW SHARING</Pill><h2>지금 나눔 중인 상품<span className="heading-count">{otherProducts.length}</span></h2><p>내 구매 요청과 조건이 맞지 않는 상품까지 모두 보여줘요. 위 추천에 나온 상품은 빼고 보여줘요.</p></div></div>{otherProducts.length ? <div className="product-grid">{otherProducts.map(p=><ProductCard key={p.id} product={p} request={null} userId={user.id} onReserve={handleReserve} onRequest={()=>setPage('request')} inProgress={busyId===p.id}/>)}</div> : <p className="muted-small">지금 다른 판매 중인 상품이 없어요.</p>}</div>}
         </section>
         <section className="container how-section"><div><Pill icon={ShieldCheck}>HOW IT WORKS</Pill><h2>나눔은 쉽고, 매칭은 똑똑하게.</h2></div><div className="how-grid"><div><span>01</span><div className="how-icon"><Package size={26}/></div><h3>상품 등록</h3><p>남는 1+1 상품의 가격과 거래 시간을 알려주세요.</p></div><div><span>02</span><div className="how-icon"><Sparkles size={26}/></div><h3>조건 매칭</h3><p>상품 일치 후 거리·가격·시간·유통기한을 계산해요.</p></div><div><span>03</span><div className="how-icon"><HeartHandshake size={26}/></div><h3>거래 예약</h3><p>안전한 공개 장소에서 만나 나눔을 완성해요.</p></div></div></section></>}
       {page==='sell' && <section className="container inner-page"><SellForm onSubmit={handleSale} busy={busyId==='sale'}/></section>}

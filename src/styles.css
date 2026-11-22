@@ -297,3 +297,6 @@ main>.inner-page::before,main>.matches-section::before,main>.presentation-sectio
 .rate-seller .button{margin-left:6px}
 .rated{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;color:#b07812;background:#fff6e0;border-radius:8px;padding:7px 10px}
 .rated svg{fill:#f5a314;color:#f5a314}
+/* 추천 아래 '지금 나눔 중인 상품' */
+.other-products{margin-top:64px;padding-top:44px;border-top:1px dashed #dfe6dd}
+@media(max-width:600px){.other-products{margin-top:40px;padding-top:30px}}
