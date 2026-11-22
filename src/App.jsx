@@ -5,10 +5,9 @@ import {
   Menu, Package, Plus, Search, ShieldCheck, ShoppingBag, SlidersHorizontal,
   Sparkles, Tag, TrendingDown, UserRound, Wallet, X, Zap
 } from 'lucide-react'
-import { CATALOG, MEETUP_SPOTS, BUYER_ORIGINS, TRADE_METHODS, CONDITIONS, findItem, findSpot, KRW, DEMO_PRODUCTS, DEMO_USER } from './data/catalog'
+import { CATALOG, MEETUP_SPOTS, BUYER_ORIGINS, TRADE_METHODS, CONDITIONS, findItem, findSpot, KRW, DEMO_USER } from './data/catalog'
 import { currentPrice, hoursLeft, matchingResult, rankProducts, topBuyers, reliability, MODEL, FACTORS, FACTOR_LABELS, DEFAULT_PRIORITY, RANK_WEIGHTS, buyerConfig, isValidPriority } from './lib/matching'
 import { supabase, HAS_SUPABASE, imageUrl } from './lib/supabase'
-import PresentationLab from './PresentationLab'
 import PriorityPicker from './PriorityPicker'
 import { authErrorMessage } from './lib/authErrors'
 import { PRESENTATION_PRODUCTS, PRESENTATION_BUYERS } from './data/presentation'
@@ -179,7 +178,7 @@ function RequestForm({ onSubmit, busy }) {
 
 export default function App() {
   const [mode, setMode] = useState(HAS_SUPABASE ? 'live' : 'demo')
-  const [page, setPage] = useState(() => { try { const p = new URLSearchParams(window.location.search).get('page'); return ['discover','presentation','sell','request','matches'].includes(p) ? p : 'discover' } catch { return 'discover' } })
+  const [page, setPage] = useState(() => { try { const p = new URLSearchParams(window.location.search).get('page'); return ['discover','sell','request','matches'].includes(p) ? p : 'discover' } catch { return 'discover' } })
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(HAS_SUPABASE)
   const [demoProducts, setDemoProducts] = useState(PRESENTATION_PRODUCTS)
@@ -197,7 +196,6 @@ export default function App() {
   const [busyId, setBusyId] = useState(null)
   const [toast, setToast] = useState(null)
   const [search, setSearch] = useState('')
-  const [showcaseLimit, setShowcaseLimit] = useState(12)
   const [category, setCategory] = useState('all')
   const [menu, setMenu] = useState(false)
   const install = useInstallPrompt()
@@ -266,11 +264,6 @@ export default function App() {
     })
   }, [activeRequest,recommended,activeProducts,category,search])
   const categories = [...new Set(CATALOG.map(x => x.category))]
-  const sampleProducts = useMemo(() => DEMO_PRODUCTS.filter(p => {
-    const item = findItem(p.product_key)
-    return (category === 'all' || item.category === category) && `${p.title} ${p.description || ''}`.toLowerCase().includes(search.toLowerCase())
-  }), [category, search])
-
   const handleSale = async (form, error) => {
     if (error) return notify(error,true)
     setBusyId('sale')
@@ -434,15 +427,10 @@ export default function App() {
   }
 
   const signOut=async()=>{const {error}=await supabase.auth.signOut();if(error)notify(error.message,true);else{setPage('discover');setActiveRequestId(null)}}
-  const navs=[{key:'discover',label:'상품 둘러보기',short:'홈',icon:Compass},{key:'presentation',label:'발표 시연',short:'시연',icon:Sparkles},{key:'sell',label:'상품 나누기',short:'나누기',icon:Plus},{key:'request',label:'구매 요청',short:'요청',icon:SlidersHorizontal},{key:'matches',label:'내 거래',short:'내 거래',icon:ShoppingBag}]
-  const resetPresentation = () => {
-    setDemoProducts(PRESENTATION_PRODUCTS.map(p=>({...p})))
-    setDemoRequests([]);setDemoMatches([]);setActiveRequestId(null)
-    notify('체험용 상품 20개·구매자 30명과 거래 상태가 초기화됐어요.')
-  }
+  const navs=[{key:'discover',label:'상품 둘러보기',short:'홈',icon:Compass},{key:'sell',label:'상품 나누기',short:'나누기',icon:Plus},{key:'request',label:'구매 요청',short:'요청',icon:SlidersHorizontal},{key:'matches',label:'내 거래',short:'내 거래',icon:ShoppingBag}]
 
   return <div className="app-shell">
-    <header className="site-header"><div className="header-inner"><button className="logo-button" onClick={()=>setPage('discover')}><Logo/></button><nav className={`main-nav ${menu?'open':''}`}>{navs.map(n=><button key={n.key} className={page===n.key?'active':''} onClick={()=>{if(n.key==='presentation')setMode('demo');setPage(n.key);setMenu(false)}}><n.icon size={16}/>{n.label}</button>)}</nav><div className="header-actions"><button className="mode-switch" onClick={()=>{setMode(isDemo && HAS_SUPABASE?'live':'demo');setPage('discover')}} title="체험 모드와 실제 DB 모드 전환"><span className={`mode-dot ${isDemo?'':'real'}`}/>{isDemo?'체험 모드':'Supabase 연결'}<ChevronDown size={13}/></button>{user && <span className="user-avatar" title={user.email}><UserRound size={17}/></span>}{!isDemo && session && <button className="icon-action" title="로그아웃" onClick={signOut}><LogOut size={19}/></button>}{install.canShow && <button className="install-button" onClick={()=>install.ios ? setIosHelp(true) : install.prompt()}><Download size={15}/>앱 설치</button>}<button className="menu-button" title="메뉴" onClick={()=>setMenu(v=>!v)}>{menu?<X size={22}/>:<Menu size={22}/>}</button></div></div></header>
+    <header className="site-header"><div className="header-inner"><button className="logo-button" onClick={()=>setPage('discover')}><Logo/></button><nav className={`main-nav ${menu?'open':''}`}>{navs.map(n=><button key={n.key} className={page===n.key?'active':''} onClick={()=>{setPage(n.key);setMenu(false)}}><n.icon size={16}/>{n.label}</button>)}</nav><div className="header-actions"><button className="mode-switch" onClick={()=>{setMode(isDemo && HAS_SUPABASE?'live':'demo');setPage('discover')}} title="체험 모드와 실제 DB 모드 전환"><span className={`mode-dot ${isDemo?'':'real'}`}/>{isDemo?'체험 모드':'Supabase 연결'}<ChevronDown size={13}/></button>{user && <span className="user-avatar" title={user.email}><UserRound size={17}/></span>}{!isDemo && session && <button className="icon-action" title="로그아웃" onClick={signOut}><LogOut size={19}/></button>}{install.canShow && <button className="install-button" onClick={()=>install.ios ? setIosHelp(true) : install.prompt()}><Download size={15}/>앱 설치</button>}<button className="menu-button" title="메뉴" onClick={()=>setMenu(v=>!v)}>{menu?<X size={22}/>:<Menu size={22}/>}</button></div></div></header>
     {isDemo && <div className="demo-ribbon"><div className="container"><Info size={15}/><span>현재 <b>체험 모드</b>입니다. 상품과 예약은 실제 데이터베이스에 저장되지 않습니다.</span>{HAS_SUPABASE && <button onClick={()=>setMode('live')}>실제 DB로 전환 <ArrowRight size={13}/></button>}</div></div>}
     {!isDemo && authLoading ? <main className="container"><div className="loading-panel">Supabase 로그인 상태 확인 중...</div></main> : !isDemo && !session ? <main className="container"><AuthPanel onToast={notify}/></main> : <main>
       {page==='discover' && <>
@@ -453,18 +441,7 @@ export default function App() {
         <div className="catalog-tools"><div className="search-box"><Search size={18}/><input placeholder="어떤 상품을 찾으세요?" value={search} onChange={e=>setSearch(e.target.value)}/>{search && <button aria-label="검색 초기화" onClick={()=>setSearch('')}><X size={14}/></button>}</div><div className="category-chips">{['all',...categories].map(c=><button key={c} onClick={()=>setCategory(c)} className={category===c?'chosen':''}>{c==='all'?'전체':c}</button>)}</div></div>
         {loading ? <div className="loading-panel">상품을 불러오는 중...</div> : shownProducts.length ? <div className="product-grid">{shownProducts.map(p=><ProductCard key={p.id} product={p} request={activeRequest} userId={user.id} onReserve={handleReserve} onRequest={()=>setPage('request')} inProgress={busyId===p.id}/>)}</div> : <Empty icon={Search} title="조건에 맞는 상품이 없어요" subtitle="다른 상품으로 요청하거나 검색 조건을 변경해 보세요." action="새 구매 요청 만들기" onAction={()=>setPage('request')}/>}
         </section>
-        {!isDemo && !activeRequest && <section className="container showcase-section">
-          <div className="section-heading">
-            <div><Pill icon={ShoppingBag}>상품 미리보기</Pill><h2>이런 상품도 나눌 수 있어요 <span className="heading-count">{sampleProducts.length}</span></h2><p>음료부터 생활용품까지, 등록 가능한 상품의 예시입니다. 실제 판매자의 게시글이 아니며 구매·예약할 수 없어요.</p></div>
-            <button className="button subtle" onClick={() => {setMode('demo');setPage('discover');setSearch('');setCategory('all')}}>체험 모드에서 모두 보기 <ArrowRight size={16}/></button>
-          </div>
-          <div className="showcase-note"><Info size={17}/> 아래 상품은 <b>시연용 샘플</b>입니다. 실제 판매 상품은 위쪽의 ‘지금 나눔 중인 상품’에서만 확인해 주세요.</div>
-          <div className="product-grid">{sampleProducts.slice(0, showcaseLimit).map(p=><ProductCard key={p.id} product={p} userId={user?.id} preview onPreview={() => {setMode('demo');setPage('discover');setSearch('');setCategory('all')}} />)}</div>
-          {sampleProducts.length>showcaseLimit && <div className="showcase-more"><button className="button outline" onClick={()=>setShowcaseLimit(n=>n+12)}>샘플 상품 더 보기 ({Math.min(showcaseLimit,sampleProducts.length)}/{sampleProducts.length})<ChevronDown size={16}/></button></div>}
-          {sampleProducts.length===0 && <p className="showcase-no-results">이 카테고리에는 시연용 샘플이 없어요. 검색어를 바꿔 보세요.</p>}
-        </section>}
         <section className="container how-section"><div><Pill icon={ShieldCheck}>HOW IT WORKS</Pill><h2>나눔은 쉽고, 매칭은 똑똑하게.</h2></div><div className="how-grid"><div><span>01</span><div className="how-icon"><Package size={26}/></div><h3>상품 등록</h3><p>남는 1+1 상품의 가격과 거래 시간을 알려주세요.</p></div><div><span>02</span><div className="how-icon"><Sparkles size={26}/></div><h3>조건 매칭</h3><p>상품 일치 후 거리·가격·시간·유통기한을 계산해요.</p></div><div><span>03</span><div className="how-icon"><HeartHandshake size={26}/></div><h3>거래 예약</h3><p>안전한 공개 장소에서 만나 나눔을 완성해요.</p></div></div></section></>}
-      {page==='presentation' && <PresentationLab products={PRESENTATION_PRODUCTS} onReset={resetPresentation}/>}
       {page==='sell' && <section className="container inner-page"><SellForm onSubmit={handleSale} busy={busyId==='sale'} isDemo={isDemo}/></section>}
       {page==='request' && <section className="container inner-page"><RequestForm onSubmit={handleRequest} busy={busyId==='request'}/></section>}
       {page==='matches' && <section className="container matches-section"><div className="section-heading"><div><Pill icon={HeartHandshake}>MY SHARING</Pill><h2>내 거래 내역</h2><p>예약 현황을 확인하고, 거래를 완료하거나 취소할 수 있어요.</p></div><button className="button subtle" onClick={()=>setPage('discover')}>상품 둘러보기 <ArrowRight size={15}/></button></div>{matches.length ? <div className="matches-list">{matches.map(m=>{const item=findItem(m.products?.product_key||products.find(p=>p.id===m.product_id)?.product_key);const buyer=m.buyer_id===user.id;return <article className="match-row" key={m.id}><div className={`match-icon ${item.color}`}>{item.icon}</div><div className="match-info"><div className="match-title"><h3>{m.products?.title||products.find(p=>p.id===m.product_id)?.title||'나눔 상품'}</h3><span className={`status status-${m.status}`}>{m.status==='reserved'?'예약 중':m.status==='completed'?'거래 완료':m.no_show?'노쇼':'취소됨'}</span></div><div className="match-meta">{buyer?'구매자':'판매자'}{(m.partner||nicknames[buyer?m.seller_id:m.buyer_id]) ? ` · 상대 ${m.partner||nicknames[buyer?m.seller_id:m.buyer_id]}` : ''} · 매칭 {Number(m.score).toFixed(1)}점 · 예약 {KRW(m.booked_price)} · {shortDate(m.created_at)}</div></div><div className="match-actions">{m.status==='reserved' && <>{!buyer && <button className="button tiny primary" disabled={busyId===m.id} onClick={()=>changeMatch(m,'complete')}>거래 완료 <Check size={14}/></button>}{!buyer && <button className="button tiny outline" disabled={busyId===m.id} onClick={()=>changeMatch(m,'no_show')} title="구매자가 나타나지 않았을 때">노쇼 신고</button>}<button className="button tiny outline" disabled={busyId===m.id} onClick={()=>changeMatch(m,'cancel')}>예약 취소</button></>}</div></article>})}</div>:<Empty icon={HeartHandshake} title="아직 예약된 거래가 없어요" subtitle="먼저 구매 요청을 작성하고 마음에 드는 상품을 예약해 보세요." action="매칭 상품 찾기" onAction={()=>setPage('request')}/>}
@@ -473,7 +450,7 @@ export default function App() {
       </section>}
     </main>}
     <footer className="footer"><div className="container footer-inner"><Logo/><div><p>하나의 나눔, 두 배의 가치.</p><small>대학생 1+1 나눔 매칭 프로젝트 · 시연용 프로토타입</small></div><div className="footer-safe"><ShieldCheck size={18}/> 공개 만남 장소에서 안전하게 거래하세요.</div></div></footer>
-    <nav className="tab-bar" aria-label="하단 메뉴">{navs.map(n=><button key={n.key} className={`${page===n.key?'active':''} ${n.key==='sell'?'tab-main':''}`} onClick={()=>{if(n.key==='presentation')setMode('demo');setPage(n.key)}} aria-current={page===n.key?'page':undefined}><span className="tab-icon"><n.icon size={n.key==='sell'?22:20}/></span><span className="tab-label">{n.short}</span></button>)}</nav>
+    <nav className="tab-bar" aria-label="하단 메뉴">{navs.map(n=><button key={n.key} className={`${page===n.key?'active':''} ${n.key==='sell'?'tab-main':''}`} onClick={()=>setPage(n.key)} aria-current={page===n.key?'page':undefined}><span className="tab-icon"><n.icon size={n.key==='sell'?22:20}/></span><span className="tab-label">{n.short}</span></button>)}</nav>
     {iosHelp && <div className="sheet-backdrop" onClick={()=>setIosHelp(false)}><div className="install-sheet" onClick={e=>e.stopPropagation()} role="dialog" aria-label="홈 화면에 추가하는 방법"><img src="/icons/icon-192.png" alt="" width="56" height="56"/><h3>하나더를 홈 화면에 추가하기</h3><ol><li>Safari 아래쪽의 <b>공유</b> 버튼 <Share size={15}/>을 눌러요.</li><li><b>홈 화면에 추가</b>를 골라요.</li><li>오른쪽 위 <b>추가</b>를 누르면 앱처럼 열려요.</li></ol><button className="button primary wide" onClick={()=>setIosHelp(false)}>확인</button></div></div>}
     {toast && <div className={`toast ${toast.error?'toast-error':''}`} role="status">{toast.error?<Info size={18}/>:<CheckCircle2 size={18}/>}<span>{toast.message}</span><button onClick={()=>setToast(null)} aria-label="닫기"><X size={15}/></button></div>}
   </div>
