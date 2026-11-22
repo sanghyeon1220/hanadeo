@@ -1,0 +1,23 @@
+{
+  "name": "하나더 · 1+1 나눔 매칭",
+  "short_name": "하나더",
+  "description": "남는 1+1 상품을 가까운 이웃과 나누는 매칭 앱",
+  "lang": "ko",
+  "id": "/",
+  "start_url": "/?source=app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#06120c",
+  "theme_color": "#06120c",
+  "categories": ["shopping", "lifestyle"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "상품 나누기", "url": "/?page=sell", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "구매 요청", "url": "/?page=request", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
