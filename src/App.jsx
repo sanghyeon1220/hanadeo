@@ -3,12 +3,12 @@ import {
   ArrowRight, ArrowUpRight, BadgeCheck, Check, CheckCircle2, ChevronDown, Clock3, Download, Share,
   Compass, HeartHandshake, Info, Leaf, LocateFixed, LogIn, LogOut, MapPin,
   Menu, Package, Plus, Search, ShieldCheck, ShoppingBag, SlidersHorizontal,
-  Sparkles, Tag, TrendingDown, UserRound, Wallet, X, Zap
+  Sparkles, Star, Tag, TrendingDown, UserRound, Wallet, X, Zap
 } from 'lucide-react'
 import { CATALOG, MEETUP_SPOTS, BUYER_ORIGINS, TRADE_METHODS, CONDITIONS, findItem, findSpot, KRW } from './data/catalog'
 import { currentPrice, hoursLeft, matchingResult, rankProducts, topBuyers, reliability, MODEL, FACTORS, FACTOR_LABELS, DEFAULT_PRIORITY, RANK_WEIGHTS, buyerConfig, isValidPriority } from './lib/matching'
 import { supabase, HAS_SUPABASE, imageUrl } from './lib/supabase'
-import PriorityPicker from './PriorityPicker'
+import PriorityPicker, { BUYER_FACTOR_LABELS } from './PriorityPicker'
 import { authErrorMessage } from './lib/authErrors'
 
 const makeDate = (days = 1, hours = 0) => {
@@ -76,13 +76,24 @@ function ProductCard({ product, request, userId, onReserve, onRequest, inProgres
       <div className="product-facts">
         <span><MapPin size={14}/>{product.meetup_label}</span>
         <span><Clock3 size={14}/>{hoursLeft(product.expires_at)} · {product.quantity ?? 1}개 · {product.trade_method ?? '직거래'}</span>
+        <span className="seller-rating"><Star size={14}/>{product.seller_rating_count ? <>판매자 평점 <b>{Number(product.seller_rating_avg).toFixed(1)}</b> ({product.seller_rating_count})</> : '새 판매자 (평가 없음)'}</span>
       </div>
-      {result && <div className="match-mini">{['P','D','T'].map(k=><div key={k}><span>{FACTOR_LABELS[k]} 적합도</span><b>{Math.round(result.factors[k]*100)}%</b></div>)}</div>}
+      {result && <div className="match-mini four">{['P','D','T','R'].map(k=><div key={k}><span>{BUYER_FACTOR_LABELS[k]}</span><b>{Math.round(result.factors[k]*100)}%</b></div>)}</div>}
       <div className="card-bottom"><span className="discount"><TrendingDown size={13}/>최저 {KRW(product.min_price)}</span>
         {preview ? <button className="button tiny outline" onClick={onPreview}>체험 모드에서 보기 <ArrowRight size={14}/></button> : own ? <button className="button tiny muted" disabled>내 상품</button> : !isAvailable ? <button className="button tiny muted" disabled>거래 종료</button> : result ? <button className="button tiny primary" disabled={inProgress || !result.timeOverlap} title={!result.timeOverlap ? '거래 가능 시간이 겹치지 않아 예약할 수 없어요' : ''} onClick={() => onReserve(product)}>{inProgress ? '처리 중' : result.timeOverlap ? '매칭 예약' : '시간 조율 필요'}<ArrowUpRight size={14}/></button> : <button className="button tiny outline" onClick={onRequest}>구매 요청 만들기<ArrowRight size={14}/></button>}
       </div>
     </div>
   </article>
+}
+
+function RateSeller({ match, myRating, onRate, busy }) {
+  const [pick, setPick] = useState(0)
+  if (myRating) return <span className="rated"><Star size={14}/>{myRating}점 평가 완료</span>
+  return <div className="rate-seller" aria-label="판매자 평가">
+    <span>판매자 평가</span>
+    {[1, 2, 3, 4, 5].map(n => <button key={n} type="button" className={n <= pick ? 'on' : ''} onClick={() => setPick(n)} aria-label={`${n}점`}><Star size={18}/></button>)}
+    <button type="button" className="button tiny primary" disabled={!pick || busy} onClick={() => onRate(match, pick)}>{busy ? '저장 중' : '평가하기'}</button>
+  </div>
 }
 
 function TopBuyers({ product, list, onLoad, loading, busyId, onSelect }) {
@@ -171,7 +182,7 @@ function RequestForm({ onSubmit, busy }) {
     if (new Date(until) <= new Date()) return onSubmit(null,'이미 지난 거래 시간은 선택할 수 없어요.')
     onSubmit({ product_key:key, max_budget:Number(budget), urgency:Number(urgency), quantity:Number(quantity), priority, available_from:iso(from), available_until:iso(until), meetup_label:findSpot(spot).label, latitude:findSpot(spot).lat, longitude:findSpot(spot).lng })
   }
-  return <div className="form-layout"><div><Pill icon={ShoppingBag}>BUYER SPACE</Pill><h2 className="section-title">필요한 하나를<br/><span>가장 잘 맞는 이웃에게.</span></h2><p className="section-subtitle">희망상품과 조건을 입력하면 판매자에게 매칭점수 상위 구매자로 추천되고, 나도 조건에 맞는 상품을 점수순으로 볼 수 있어요.</p><div className="factor-card"><p className="factor-heading">우리의 매칭 공식</p><div className="factor-grid five">{FACTORS.map(k=><div key={k}><span>{Math.round(MODEL.weights[k]*100)}%</span><small>{FACTOR_LABELS[k]}</small></div>)}</div><p className="muted-small">희망상품·수량·예산·거래시간을 먼저 통과한 경우에만 점수를 매겨요. 신뢰도는 과거 거래 완료·취소 이력으로 계산되며 처음엔 0.5예요.</p></div></div><form className="entry-card" onSubmit={submit}><div className="form-head"><span className="form-count">01 — 희망 조건</span><h3>구매 요청 등록</h3></div><div className="form-grid"><label className="field-label full">희망 상품<select value={key} onChange={e=>setKey(e.target.value)}>{CATALOG.map(c=><option key={c.key} value={c.key}>{c.icon} {c.name}</option>)}</select></label><label className="field-label">최대 지불 가능가격 (원)<input type="number" value={budget} onChange={e=>setBudget(e.target.value)} min="1" max="9999999" required/></label><label className="field-label">구매 희망수량<input type="number" value={quantity} onChange={e=>setQuantity(e.target.value)} min="1" max="99" required/></label><div className="field-label full"><span>구매 긴급도</span><div className="urgency-row">{[1,2,3,4,5].map(n=><button className={`urgency-option ${urgency===n?'selected':''}`} type="button" key={n} onClick={()=>setUrgency(n)}>{n}</button>)}</div><div className="urgency-caption"><span>여유로워요</span><span>지금 필요해요</span></div></div></div><div className="form-head border-top"><span className="form-count">02 — 거래 조건</span></div><div className="form-grid"><label className="field-label">거래 가능 시작<input type="datetime-local" value={from} onChange={e=>setFrom(e.target.value)} required/></label><label className="field-label">거래 가능 종료<input type="datetime-local" value={until} onChange={e=>setUntil(e.target.value)} required/></label><label className="field-label full">구매자 위치 또는 출발 장소<select value={spot} onChange={e=>setSpot(e.target.value)}>{BUYER_ORIGINS.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></label></div><div className="form-head border-top"><span className="form-count">03 — 내 우선순위</span><p className="muted-small">무엇을 더 중요하게 볼지 순서를 정하면, 보고서 가중치 30·25·20·15·10%가 그 순서대로 배정돼 <b>내가 보는 상품 추천 순서</b>가 바뀌어요. 판매자에게 보이는 매칭점수는 공정성을 위해 기본 가중치로 계산돼요.</p></div><PriorityPicker value={priority} onChange={setPriority}/><div className="inline-note"><ShieldCheck size={15}/>실제 거주지가 아닌 공개된 만남 장소를 선택해 주세요.</div><button className="button primary wide" type="submit" disabled={busy}>{busy?'매칭 중...':'상품 매칭하기'}<Sparkles size={17}/></button></form></div>
+  return <div className="form-layout"><div><Pill icon={ShoppingBag}>BUYER SPACE</Pill><h2 className="section-title">필요한 하나를<br/><span>가장 잘 맞는 이웃에게.</span></h2><p className="section-subtitle">희망상품과 조건을 입력하면 판매자에게 매칭점수 상위 구매자로 추천되고, 나도 조건에 맞는 상품을 점수순으로 볼 수 있어요.</p><div className="factor-card"><p className="factor-heading">우리의 매칭 공식</p><div className="factor-grid five">{FACTORS.map(k=><div key={k}><span>{Math.round(MODEL.weights[k]*100)}%</span><small>{FACTOR_LABELS[k]}</small></div>)}</div><p className="muted-small">희망상품·수량·예산·거래시간을 먼저 통과한 경우에만 점수를 매겨요. 신뢰도는 과거 거래 완료·취소 이력으로 계산되며 처음엔 0.5예요.</p></div></div><form className="entry-card" onSubmit={submit}><div className="form-head"><span className="form-count">01 — 희망 조건</span><h3>구매 요청 등록</h3></div><div className="form-grid"><label className="field-label full">희망 상품<select value={key} onChange={e=>setKey(e.target.value)}>{CATALOG.map(c=><option key={c.key} value={c.key}>{c.icon} {c.name}</option>)}</select></label><label className="field-label">최대 지불 가능가격 (원)<input type="number" value={budget} onChange={e=>setBudget(e.target.value)} min="1" max="9999999" required/></label><label className="field-label">구매 희망수량<input type="number" value={quantity} onChange={e=>setQuantity(e.target.value)} min="1" max="99" required/></label><div className="field-label full"><span>구매 긴급도</span><div className="urgency-row">{[1,2,3,4,5].map(n=><button className={`urgency-option ${urgency===n?'selected':''}`} type="button" key={n} onClick={()=>setUrgency(n)}>{n}</button>)}</div><div className="urgency-caption"><span>여유로워요</span><span>지금 필요해요</span></div></div></div><div className="form-head border-top"><span className="form-count">02 — 거래 조건</span></div><div className="form-grid"><label className="field-label">거래 가능 시작<input type="datetime-local" value={from} onChange={e=>setFrom(e.target.value)} required/></label><label className="field-label">거래 가능 종료<input type="datetime-local" value={until} onChange={e=>setUntil(e.target.value)} required/></label><label className="field-label full">구매자 위치 또는 출발 장소<select value={spot} onChange={e=>setSpot(e.target.value)}>{BUYER_ORIGINS.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></label></div><div className="form-head border-top"><span className="form-count">03 — 내 우선순위</span><p className="muted-small">무엇을 더 중요하게 볼지 순서를 정하면, 보고서 가중치 30·25·20·15·10%가 그 순서대로 배정돼 <b>내가 보는 상품 추천 순서</b>가 바뀌어요. 판매자에게 보이는 매칭점수는 공정성을 위해 기본 가중치로 계산돼요. 내 화면의 R은 <b>판매자 평점</b>이에요.</p></div><PriorityPicker value={priority} onChange={setPriority}/><div className="inline-note"><ShieldCheck size={15}/>실제 거주지가 아닌 공개된 만남 장소를 선택해 주세요.</div><button className="button primary wide" type="submit" disabled={busy}>{busy?'매칭 중...':'상품 매칭하기'}<Sparkles size={17}/></button></form></div>
 }
 
 export default function App() {
@@ -185,6 +196,8 @@ export default function App() {
   const [confirmId, setConfirmId] = useState(null)
   const [myStats, setMyStats] = useState({completed_count:0,closed_count:0})
   const [liveTop, setLiveTop] = useState({})
+  const [sellerRatings, setSellerRatings] = useState({})
+  const [myReviews, setMyReviews] = useState({})
   const [activeRequestId, setActiveRequestId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [busyId, setBusyId] = useState(null)
@@ -197,7 +210,8 @@ export default function App() {
   // 화면을 바꾸면 앱처럼 맨 위에서 시작
   useEffect(() => { try { window.scrollTo({ top: 0 }) } catch {} }, [page])
   const user = session?.user
-  const products = liveProducts
+  // 판매자 평점을 상품에 붙여서 구매자 화면 R 로 사용
+  const products = useMemo(() => liveProducts.map(p => ({ ...p, seller_rating_avg: sellerRatings[p.seller_id]?.avg ?? 0, seller_rating_count: sellerRatings[p.seller_id]?.count ?? 0 })), [liveProducts, sellerRatings])
   const requests = liveRequests
   const matches = liveMatches
   const openRequests = requests.filter(r => (r.status ?? 'open') === 'open')
@@ -234,6 +248,13 @@ export default function App() {
       setLiveProducts(p.data ?? [])
       setLiveRequests(r.data ?? [])
       setLiveMatches(m.data ?? [])
+      const sellerIds=[...new Set((p.data ?? []).map(x=>x.seller_id))]
+      if (sellerIds.length) {
+        const rt=await supabase.rpc('get_seller_ratings',{p_sellers:sellerIds})
+        if (!rt.error) setSellerRatings(Object.fromEntries((rt.data??[]).map(x=>[x.seller_id,{avg:Number(x.rating_avg),count:x.rating_count}])))
+      }
+      const rv=await supabase.from('seller_reviews').select('match_id,rating')
+      if (!rv.error) setMyReviews(Object.fromEntries((rv.data??[]).map(x=>[x.match_id,x.rating])))
       const st=await supabase.rpc('get_trade_stats',{p_user:session.user.id})
       if (!st.error && st.data?.[0]) setMyStats(st.data[0])
       const partnerIds=[...new Set((m.data ?? []).flatMap(x=>[x.buyer_id,x.seller_id]))]
@@ -351,6 +372,18 @@ export default function App() {
     finally {setBusyId(null)}
   }
 
+  const rateSeller = async (match, rating) => {
+    setBusyId(`rate-${match.id}`)
+    try {
+      const {error}=await supabase.rpc('rate_seller',{p_match_id:match.id,p_rating:rating})
+      if(error) throw error
+      setMyReviews(old=>({...old,[match.id]:rating}))
+      notify('판매자 평가를 남겼어요. 고마워요!')
+      await refresh()
+    } catch(err){notify(err.message,true)}
+    finally{setBusyId(null)}
+  }
+
   const withdrawProduct = async product => {
     if (confirmId !== product.id) { setConfirmId(product.id); return }
     setConfirmId(null)
@@ -387,7 +420,7 @@ export default function App() {
     {!HAS_SUPABASE ? <main className="container"><div className="loading-panel"><b>서버 설정이 필요해요.</b><br/>VITE_SUPABASE_URL과 VITE_SUPABASE_PUBLISHABLE_KEY 환경 변수를 넣은 뒤 다시 배포해 주세요.</div></main> : authLoading ? <main className="container"><div className="loading-panel">로그인 상태 확인 중...</div></main> : !session ? <main className="container"><AuthPanel onToast={notify}/></main> : <main>
       {page==='discover' && <>
         <section className="hero"><div className="container hero-grid"><div className="hero-copy"><Pill icon={Leaf}>함께 나누면 더 커지는 가치</Pill><h1>남는 하나가,<br/><span>누군가에게</span><br/>필요한 하나로.</h1><p>1+1 상품을 필요한 이웃과 연결해요.<br/>거리부터 가격, 거래 시간까지 똑똑하게.</p><div className="hero-buttons"><button className="button primary" onClick={()=>setPage('request')}>맞는 상품 찾기 <ArrowRight size={17}/></button><button className="button subtle" onClick={()=>setPage('sell')}>상품 등록하기 <Plus size={16}/></button></div><div className="hero-stats"><div><b>{activeProducts.length}<span>개</span></b><small>나눔 상품</small></div><div><b>{matches.filter(m=>m.status==='completed').length}<span>건</span></b><small>완료된 거래</small></div><div><b>5<span>가지</span></b><small>매칭 지표</small></div></div></div><div className="hero-art" aria-hidden="true"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="floating-card float-one"><span>🥛</span><div><small>방금 등록됐어요</small><b>우유 1L</b></div><div className="float-check"><Check size={15}/></div></div><div className="giant-heart"><HeartHandshake size={92} strokeWidth={1.4}/><span className="heart-spark one">✦</span><span className="heart-spark two">✳</span></div><div className="floating-card float-two"><div className="float-circle"><Sparkles size={19}/></div><div><small>스마트 매칭</small><b>가까운 이웃 추천!</b></div></div><div className="orbit-caption">SHARE MORE · WASTE LESS</div></div></div></section>
-        <section className="container catalog-section"><div className="section-heading"><div><Pill icon={Sparkles}>{activeRequest?'나에게 딱 맞는 추천':'NEARBY SHARING'}</Pill><h2>{activeRequest?'내 조건에 맞는 상품':'지금 나눔 중인 상품'}<span className="heading-count">{shownProducts.length}</span></h2><p>{activeRequest?`${findItem(activeRequest.product_key).name} · 최대 ${KRW(activeRequest.max_budget)} · 내 우선순위 ${(isValidPriority(activeRequest.priority)?activeRequest.priority:DEFAULT_PRIORITY).map(k=>FACTOR_LABELS[k]).join(' > ')}`:'가까운 이웃들이 기다리고 있는 1+1 상품을 살펴보세요.'}</p></div><button className="button subtle" onClick={()=>setPage('request')}>{activeRequest?'구매 요청 추가하기':'내 조건으로 찾기'}<ArrowRight size={16}/></button></div>
+        <section className="container catalog-section"><div className="section-heading"><div><Pill icon={Sparkles}>{activeRequest?'나에게 딱 맞는 추천':'NEARBY SHARING'}</Pill><h2>{activeRequest?'내 조건에 맞는 상품':'지금 나눔 중인 상품'}<span className="heading-count">{shownProducts.length}</span></h2><p>{activeRequest?`${findItem(activeRequest.product_key).name} · 최대 ${KRW(activeRequest.max_budget)} · 내 우선순위 ${(isValidPriority(activeRequest.priority)?activeRequest.priority:DEFAULT_PRIORITY).map(k=>BUYER_FACTOR_LABELS[k]).join(' > ')}`:'가까운 이웃들이 기다리고 있는 1+1 상품을 살펴보세요.'}</p></div><button className="button subtle" onClick={()=>setPage('request')}>{activeRequest?'구매 요청 추가하기':'내 조건으로 찾기'}<ArrowRight size={16}/></button></div>
         {openRequests.length>0 && <div className="request-selector"><span><Zap size={15}/> 적용 중인 구매 요청</span><select value={activeRequest?.id||''} onChange={e=>setActiveRequestId(e.target.value)}>{openRequests.map(r=><option value={r.id} key={r.id}>{findItem(r.product_key).name} · {KRW(r.max_budget)} 이하 · {shortDate(r.created_at)}</option>)}</select><button onClick={()=>setActiveRequestId('__none__')} title="추천 보기만 해제 (요청은 유지)" className="text-button">{activeRequest?'추천 해제':''}</button>{activeRequest && <button onClick={()=>setShowPriority(v=>!v)} className="text-button">내 우선순위 {showPriority?'접기':'바꾸기'}</button>}{activeRequest && <button onClick={()=>closeRequest(activeRequest)} disabled={busyId===activeRequest.id} title="더 이상 필요 없으면 요청을 닫아요" className="text-button">요청 닫기</button>}</div>}
         {activeRequest && showPriority && <div className="priority-panel"><div><b>내 우선순위</b><p>순서를 바꾸면 아래 추천 순서와 '내 기준' 점수가 바로 바뀌어요.</p></div><PriorityPicker compact value={pickedRequest.priority} onChange={pr=>updatePriority(pickedRequest,pr)}/></div>}
         <div className="catalog-tools"><div className="search-box"><Search size={18}/><input placeholder="어떤 상품을 찾으세요?" value={search} onChange={e=>setSearch(e.target.value)}/>{search && <button aria-label="검색 초기화" onClick={()=>setSearch('')}><X size={14}/></button>}</div><div className="category-chips">{['all',...categories].map(c=><button key={c} onClick={()=>setCategory(c)} className={category===c?'chosen':''}>{c==='all'?'전체':c}</button>)}</div></div>
@@ -396,7 +429,7 @@ export default function App() {
         <section className="container how-section"><div><Pill icon={ShieldCheck}>HOW IT WORKS</Pill><h2>나눔은 쉽고, 매칭은 똑똑하게.</h2></div><div className="how-grid"><div><span>01</span><div className="how-icon"><Package size={26}/></div><h3>상품 등록</h3><p>남는 1+1 상품의 가격과 거래 시간을 알려주세요.</p></div><div><span>02</span><div className="how-icon"><Sparkles size={26}/></div><h3>조건 매칭</h3><p>상품 일치 후 거리·가격·시간·유통기한을 계산해요.</p></div><div><span>03</span><div className="how-icon"><HeartHandshake size={26}/></div><h3>거래 예약</h3><p>안전한 공개 장소에서 만나 나눔을 완성해요.</p></div></div></section></>}
       {page==='sell' && <section className="container inner-page"><SellForm onSubmit={handleSale} busy={busyId==='sale'}/></section>}
       {page==='request' && <section className="container inner-page"><RequestForm onSubmit={handleRequest} busy={busyId==='request'}/></section>}
-      {page==='matches' && <section className="container matches-section"><div className="section-heading"><div><Pill icon={HeartHandshake}>MY SHARING</Pill><h2>내 거래 내역</h2><p>예약 현황을 확인하고, 거래를 완료하거나 취소할 수 있어요.</p></div><button className="button subtle" onClick={()=>setPage('discover')}>상품 둘러보기 <ArrowRight size={15}/></button></div>{matches.length ? <div className="matches-list">{matches.map(m=>{const item=findItem(m.products?.product_key||products.find(p=>p.id===m.product_id)?.product_key);const buyer=m.buyer_id===user.id;return <article className="match-row" key={m.id}><div className={`match-icon ${item.color}`}>{item.icon}</div><div className="match-info"><div className="match-title"><h3>{m.products?.title||products.find(p=>p.id===m.product_id)?.title||'나눔 상품'}</h3><span className={`status status-${m.status}`}>{m.status==='reserved'?'예약 중':m.status==='completed'?'거래 완료':m.no_show?'노쇼':'취소됨'}</span></div><div className="match-meta">{buyer?'구매자':'판매자'}{(m.partner||nicknames[buyer?m.seller_id:m.buyer_id]) ? ` · 상대 ${m.partner||nicknames[buyer?m.seller_id:m.buyer_id]}` : ''} · 매칭 {Number(m.score).toFixed(1)}점 · 예약 {KRW(m.booked_price)} · {shortDate(m.created_at)}</div></div><div className="match-actions">{m.status==='reserved' && <>{!buyer && <button className="button tiny primary" disabled={busyId===m.id} onClick={()=>changeMatch(m,'complete')}>거래 완료 <Check size={14}/></button>}{!buyer && <button className="button tiny outline" disabled={busyId===m.id} onClick={()=>changeMatch(m,'no_show')} title="구매자가 나타나지 않았을 때">노쇼 신고</button>}<button className="button tiny outline" disabled={busyId===m.id} onClick={()=>changeMatch(m,'cancel')}>예약 취소</button></>}</div></article>})}</div>:<Empty icon={HeartHandshake} title="아직 예약된 거래가 없어요" subtitle="먼저 구매 요청을 작성하고 마음에 드는 상품을 예약해 보세요." action="매칭 상품 찾기" onAction={()=>setPage('request')}/>}
+      {page==='matches' && <section className="container matches-section"><div className="section-heading"><div><Pill icon={HeartHandshake}>MY SHARING</Pill><h2>내 거래 내역</h2><p>예약 현황을 확인하고, 거래를 완료하거나 취소할 수 있어요.</p></div><button className="button subtle" onClick={()=>setPage('discover')}>상품 둘러보기 <ArrowRight size={15}/></button></div>{matches.length ? <div className="matches-list">{matches.map(m=>{const item=findItem(m.products?.product_key||products.find(p=>p.id===m.product_id)?.product_key);const buyer=m.buyer_id===user.id;return <article className="match-row" key={m.id}><div className={`match-icon ${item.color}`}>{item.icon}</div><div className="match-info"><div className="match-title"><h3>{m.products?.title||products.find(p=>p.id===m.product_id)?.title||'나눔 상품'}</h3><span className={`status status-${m.status}`}>{m.status==='reserved'?'예약 중':m.status==='completed'?'거래 완료':m.no_show?'노쇼':'취소됨'}</span></div><div className="match-meta">{buyer?'구매자':'판매자'}{(m.partner||nicknames[buyer?m.seller_id:m.buyer_id]) ? ` · 상대 ${m.partner||nicknames[buyer?m.seller_id:m.buyer_id]}` : ''} · 매칭 {Number(m.score).toFixed(1)}점 · 예약 {KRW(m.booked_price)} · {shortDate(m.created_at)}</div></div><div className="match-actions">{m.status==='reserved' && <>{!buyer && <button className="button tiny primary" disabled={busyId===m.id} onClick={()=>changeMatch(m,'complete')}>거래 완료 <Check size={14}/></button>}{!buyer && <button className="button tiny outline" disabled={busyId===m.id} onClick={()=>changeMatch(m,'no_show')} title="구매자가 나타나지 않았을 때">노쇼 신고</button>}<button className="button tiny outline" disabled={busyId===m.id} onClick={()=>changeMatch(m,'cancel')}>예약 취소</button></>}{buyer && m.status==='completed' && <RateSeller match={m} myRating={myReviews[m.id]} onRate={rateSeller} busy={busyId===`rate-${m.id}`}/>}</div></article>})}</div>:<Empty icon={HeartHandshake} title="아직 예약된 거래가 없어요" subtitle="먼저 구매 요청을 작성하고 마음에 드는 상품을 예약해 보세요." action="매칭 상품 찾기" onAction={()=>setPage('request')}/>}
         <div className="section-heading my-products-heading"><div><h2>내 판매글<span className="heading-count">{myProducts.length}</span></h2><p>판매 중인 글마다 매칭점수 상위 구매자 TOP 3를 추천해요. 마음에 드는 구매자를 선택하면 거래가 시작돼요.</p></div></div>
         {myProducts.length ? <div className="matches-list">{myProducts.map(p=>{const item=findItem(p.product_key);const label={active:'판매 중',reserved:'예약 중',sold:'판매 완료',withdrawn:'내림'}[p.status]||p.status;return <article className="match-row" key={p.id}><div className={`match-icon ${item.color}`}>{item.icon}</div><div className="match-info"><div className="match-title"><h3>{p.title}</h3><span className={`status status-${p.status==='active'?'reserved':p.status==='sold'?'completed':'cancelled'}`}>{label}</span></div><div className="match-meta">현재 {KRW(currentPrice(p))} · 최저 {KRW(p.min_price)} · {p.meetup_label} · {hoursLeft(p.expires_at)}</div></div><div className="match-actions">{p.status==='active' && <button className="button tiny outline" disabled={busyId===p.id} onClick={()=>withdrawProduct(p)}>{confirmId===p.id?'정말 내릴까요? 한 번 더 누르기':'판매 내리기'}</button>}</div>{p.status==='active' && <TopBuyers product={p} list={liveTop[p.id]} onLoad={()=>loadLiveTop(p)} loading={busyId===`top-${p.id}`} busyId={busyId} onSelect={c=>selectBuyer(p,c)}/>}</article>})}</div> : <p className="muted-small">아직 등록한 판매글이 없어요.</p>}
       </section>}

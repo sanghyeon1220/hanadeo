@@ -285,3 +285,15 @@ main>.inner-page::before,main>.matches-section::before,main>.presentation-sectio
   .tab-bar .tab-main.active{color:#ff9a63}
   .tab-bar .tab-main.active .tab-icon{background:rgba(245,95,20,.16)}
 }
+/* 판매자 평점 */
+.seller-rating svg{color:#f5a314}
+.seller-rating b{color:#2d4533}
+.match-mini.four{grid-template-columns:repeat(4,1fr)}
+.rate-seller{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
+.rate-seller>span{font-size:11px;font-weight:800;color:#6d7f71;margin-right:6px}
+.rate-seller>button:not(.button){border:0;background:none;padding:4px;color:#d5dbd3;min-height:32px;display:grid;place-items:center}
+.rate-seller>button.on{color:#f5a314}
+.rate-seller>button.on svg{fill:#f5a314}
+.rate-seller .button{margin-left:6px}
+.rated{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;color:#b07812;background:#fff6e0;border-radius:8px;padding:7px 10px}
+.rated svg{fill:#f5a314;color:#f5a314}

@@ -97,7 +97,7 @@ test('필터 깔때기 수',()=>{
   assert.equal(f.all,4); assert.equal(f.product,3); assert.equal(f.quantity,2); assert.equal(f.budget,1); assert.equal(f.time,1)
 })
 
-test('구매자 관점 결과도 같은 점수',()=>{
+test('구매자 관점: 평가 없는 판매자·신규 구매자면 판매자 쪽과 같은 점수 (둘 다 R=0.5)',()=>{
   const seller=evaluatePair(product,buyer,t0+10*H).score
   const buyerView=matchingResult(product,buyer,'b1',t0+10*H).score
   assert.equal(seller,buyerView)
@@ -151,4 +151,35 @@ test('판매자 TOP 3 는 구매자가 우선순위를 바꿔도 같은 점수(�
   const a=rankBuyers(product,[{...buyer,priority:['U','R','T','D','P']}],t0)[0].score
   const b=rankBuyers(product,[buyer],t0)[0].score
   assert.equal(a,b)
+})
+
+import { sellerRatingFactor } from '../src/lib/matching.js'
+
+test('판매자 평점 → R: 새 판매자 0.5, 5점 1개 0.667, 5점 10개 0.917, 1점 10개 0.083',()=>{
+  assert.equal(sellerRatingFactor(0,0),0.5)
+  assert.ok(Math.abs(sellerRatingFactor(5,1)-(((5+6)/3-1)/4))<1e-12)
+  assert.ok(Math.abs(sellerRatingFactor(5,10)-(((50+6)/12-1)/4))<1e-12)
+  assert.ok(Math.abs(sellerRatingFactor(1,10)-(((10+6)/12-1)/4))<1e-12)
+})
+
+test('구매자 화면 R 은 판매자 평점 — 평점 높은 판매자가 위로',()=>{
+  const now=t0+10*H
+  const good={...product,id:'good',seller_id:'s1',seller_rating_avg:4.8,seller_rating_count:12}
+  const bad={...product,id:'bad',seller_id:'s2',seller_rating_avg:1.5,seller_rating_count:12}
+  const rows=rankProducts([bad,good],buyer,'b1',now)
+  assert.equal(rows[0].id,'good')
+  assert.ok(rows[0].factors.R>rows[1].factors.R)
+})
+
+test('구매자의 거래 이력은 구매자 화면 R 에 영향 없음 (판매자 평점만 사용)',()=>{
+  const now=t0+10*H
+  const a=matchingResult(product,{...buyer,completed_count:9,closed_count:9},'b1',now)
+  const b=matchingResult(product,{...buyer,completed_count:0,closed_count:5},'b1',now)
+  assert.equal(a.factors.R,b.factors.R)
+})
+
+test('판매자 TOP 3 의 R 은 그대로 구매자 신뢰도',()=>{
+  const p={...product,seller_rating_avg:5,seller_rating_count:50}
+  const r=rankBuyers(p,[{...buyer,completed_count:6,closed_count:6}],t0)[0]
+  assert.equal(r.factors.R,7/8)
 })

@@ -81,6 +81,17 @@ export function reliability(completed = 0, closed = 0) {
   return (Number(completed) + 1) / (Number(closed) + 2)
 }
 
+// 구매자 화면의 R: 판매자 평점(1~5점)을 0~1로 바꿈.
+// 평가가 적을 때 한두 개 점수로 극단값이 나오지 않도록, 3점짜리 가상 평가 2개를 더해 평균을 냅니다(베이지안 평균).
+//   보정 평균 = (평점 합 + 3×2) / (평가 수 + 2),   R = (보정 평균 − 1) / 4
+//   새 판매자 → 3점 → 0.5 (신뢰도 R 의 신규 이용자 0.5 와 같은 출발점)
+export const RATING_PRIOR = { mean: 3, weight: 2 }
+export function sellerRatingFactor(avg = 0, count = 0) {
+  const n = Math.max(0, Number(count) || 0)
+  const smoothed = (Number(avg || 0) * n + RATING_PRIOR.mean * RATING_PRIOR.weight) / (n + RATING_PRIOR.weight)
+  return clamp((smoothed - 1) / 4)
+}
+
 export function normalizeWeights(weights) {
   const total = Object.values(weights).reduce((sum, w) => sum + Math.max(0, w), 0) || 1
   return Object.fromEntries(Object.entries(weights).map(([k, w]) => [k, Math.max(0, w) / total]))
@@ -132,11 +143,15 @@ export function topBuyers(product, requests, now = Date.now(), cfg = MODEL) {
   return rankBuyers(product, requests, now, cfg).slice(0, cfg.topN)
 }
 
-// 구매자 관점: 내 요청에 맞는 상품 (같은 식, 같은 점수)
+// 구매자 관점: 내 요청에 맞는 상품.
+// 필터·P·D·T·U 는 판매자 쪽과 같고, R 만 '판매자 평점'(product.seller_rating_avg / _count)으로 바꿉니다.
+// (판매자 TOP 3 와 서버에 저장되는 점수의 R 은 보고서대로 구매자의 거래 신뢰도)
 export function matchingResult(product, request, currentUserId, now = Date.now(), cfg = MODEL) {
   if (!request || !product || product.seller_id === currentUserId) return null
   const r = evaluatePair(product, { ...request, buyer_id: request.buyer_id ?? currentUserId }, now, cfg)
-  return r && { ...product, ...r, timeOverlap: true, feasible: true }
+  if (!r) return null
+  const factors = { ...r.factors, R: sellerRatingFactor(product.seller_rating_avg, product.seller_rating_count) }
+  return { ...product, ...r, factors, score: scoreFromFactors(factors, cfg.weights), timeOverlap: true, feasible: true }
 }
 
 export function rankProducts(products, request, currentUserId, now = Date.now(), cfg = MODEL) {
