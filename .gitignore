@@ -5,5 +5,5 @@ dist/
 .env.*.local
 .DS_Store
 # Capacitor (GitHub Actions에서 매번 새로 만듦)
-android/
-ios/
+/android/
+/ios/
