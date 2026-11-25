@@ -43,9 +43,11 @@ function useInstallPrompt() {
     try { const { outcome } = await deferred.userChoice; if (outcome === 'accepted') setInstalled(true) } catch {}
     setDeferred(null)
   }
+  // 안드로이드 앱(Capacitor) 안에서는 이미 설치된 상태이므로 '앱 설치' 버튼을 숨김
+  const nativeApp = /HanadeoApp/.test(ua) || Boolean(typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.())
   let embedded = false
   try { embedded = window.self !== window.top } catch { embedded = true }
-  return { canShow: !embedded && !standalone && !installed && (Boolean(deferred) || ios), ios: ios && !deferred, prompt }
+  return { canShow: !nativeApp && !embedded && !standalone && !installed && (Boolean(deferred) || ios), ios: ios && !deferred, prompt }
 }
 
 function Pill({ icon: Icon, children, warm = false }) {

@@ -1,0 +1,69 @@
+# 안드로이드 앱(APK) 빌드
+# GitHub 저장소의 Actions 탭에서 'Run workflow'를 누르거나, 앱 설정 파일이 바뀌면 자동으로 실행됩니다.
+# 완성된 APK는 저장소의 Releases 에 올라갑니다.
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - capacitor.config.json
+      - .github/workflows/android.yml
+      - public/icons/**
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: 웹 빌드 (앱 안에 들어갈 기본 파일)
+        run: |
+          npm install
+          npm run build
+
+      - name: Capacitor 설치 및 안드로이드 프로젝트 생성
+        run: |
+          npm install --no-save @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+          npx cap add android
+          npx cap sync android
+
+      - name: 앱 아이콘 넣기
+        run: |
+          RES=android/app/src/main/res
+          rm -rf $RES/mipmap-anydpi-v26
+          for pair in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            d=${pair%%:*}; s=${pair##*:}
+            convert public/icons/icon-512.png -resize ${s}x${s} $RES/mipmap-$d/ic_launcher.png
+            convert public/icons/icon-512.png -resize ${s}x${s} $RES/mipmap-$d/ic_launcher_round.png
+            convert public/icons/icon-512.png -resize ${s}x${s} $RES/mipmap-$d/ic_launcher_foreground.png
+          done
+
+      - name: APK 빌드
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Releases 에 APK 올리기
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk hanadeo.apk
+          gh release create "app-${{ github.run_number }}" hanadeo.apk \
+            --title "하나더 안드로이드 앱 #${{ github.run_number }}" \
+            --notes "hanadeo.apk 를 휴대폰에서 내려받아 설치하세요. 앱은 hanadeo.vercel.app 을 열기 때문에, 사이트가 바뀌면 앱을 다시 설치하지 않아도 반영됩니다." \
+            --latest

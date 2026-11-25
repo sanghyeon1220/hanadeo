@@ -1,0 +1,13 @@
+{
+  "appId": "com.hanadeo.app",
+  "appName": "하나더",
+  "webDir": "dist",
+  "server": {
+    "url": "https://hanadeo.vercel.app",
+    "cleartext": false
+  },
+  "android": {
+    "appendUserAgent": "HanadeoApp"
+  },
+  "backgroundColor": "#06120c"
+}

@@ -1,3 +1,15 @@
+# 안드로이드 앱 (APK)
+
+`capacitor.config.json` + `.github/workflows/android.yml` 로 GitHub가 클라우드에서 APK를 빌드합니다.
+
+- **받는 곳:** 저장소 오른쪽 **Releases** → 최신 `hanadeo.apk`
+- **다시 빌드:** 저장소 **Actions → Android APK → Run workflow**
+- **동작 방식:** 앱은 https://hanadeo.vercel.app 을 엽니다. 사이트를 고치면 앱을 다시 설치하지 않아도 반영됩니다. 앱 이름·아이콘·주소를 바꿀 때만 다시 빌드하면 됩니다.
+- **지금은 테스트용(debug) APK** 입니다. 구글 플레이에 올리려면 서명 키를 만들어 release 빌드로 바꿔야 합니다.
+- **아이폰 앱**은 Mac과 Apple 개발자 계정(연 $99)이 필요해서 포함하지 않았습니다. 아이폰은 사파리 → 공유 → 홈 화면에 추가(PWA)로 설치합니다.
+
+---
+
 > 2026-11-22: **판매자 평점** 추가. 운영 DB에 `supabase/migrations/20261122b_seller_ratings.sql`을 SQL Editor에서 한 번 실행해야 합니다(여러 번 실행해도 안전). 구매자 화면의 R은 판매자 평점, 판매자 TOP 3의 R은 구매자 신뢰도입니다(docs/MATCHING.md 6.1).
 > 2026-11-22: 체험 모드(가짜 데이터로 둘러보기)와 모드 전환 버튼을 없앴습니다. 사이트는 항상 Supabase에 연결되어 로그인 후 사용합니다. 환경 변수가 없으면 '서버 설정이 필요해요' 안내가 나옵니다.
 > 같은 날 '발표 시연' 페이지와 첫 화면의 '시연용 샘플 상품' 영역을 제거했습니다. 발표 실습실 코드(`src/PresentationLab.jsx`)는 GitHub 기록의 커밋 `6855331`에서 다시 꺼낼 수 있습니다. 매칭 계산 함수와 테스트는 그대로 있습니다.
