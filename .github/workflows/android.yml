@@ -47,9 +47,9 @@ jobs:
           rm -rf $RES/mipmap-anydpi-v26
           for pair in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
             d=${pair%%:*}; s=${pair##*:}
-            convert public/icons/icon-512.png -resize ${s}x${s} $RES/mipmap-$d/ic_launcher.png
-            convert public/icons/icon-512.png -resize ${s}x${s} $RES/mipmap-$d/ic_launcher_round.png
-            convert public/icons/icon-512.png -resize ${s}x${s} $RES/mipmap-$d/ic_launcher_foreground.png
+            for name in ic_launcher ic_launcher_round ic_launcher_foreground; do
+              cp public/icons/android/icon-$s.png $RES/mipmap-$d/$name.png
+            done
           done
 
       - name: APK 빌드
